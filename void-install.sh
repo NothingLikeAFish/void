@@ -19,7 +19,7 @@ parted -s "$DRIVE" \
     mkpart ROOT btrfs 1GiB 100%
 # Format partitions
 mkfs.fat -F32 "${DRIVE}p1"
-mkfs.btrfs "${DRIVE}p2"
+mkfs.btrfs -f "${DRIVE}p2"
 # Mount and make btrfs subvolumes
 mkdir -p /mnt
 mount "${DRIVE}p2" /mnt
@@ -36,7 +36,7 @@ mount "${DRIVE}p1" /mnt/boot/efi
 mkdir -p /mnt/var/db/xbps/keys
 cp /var/db/xbps/keys/* /mnt/var/db/xbps/keys/
 # Install base system
-XBPS_ARCH="$ARCH" xbps-install -S -r /mnt -R "$REPO" base-system
+XBPS_ARCH="$ARCH" xbps-install -S -r /mnt -R "${REPO}/musl" base-system
 # Generate fstab
 xgenfstab -U /mnt > /mnt/etc/fstab
 # Chroot into the new system
