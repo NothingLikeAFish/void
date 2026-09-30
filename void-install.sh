@@ -20,9 +20,6 @@ parted -s "$DRIVE" \
 # Format partitions
 mkfs.fat -F32 "${DRIVE}p1"
 mkfs.btrfs "${DRIVE}p2"
-# Mount EFI partition
-mkdir -p /mnt/boot/efi
-mount "${DRIVE}p1" /mnt/boot/efi
 # Mount and make btrfs subvolumes
 mkdir -p /mnt
 mount "${DRIVE}p2" /mnt
@@ -32,6 +29,9 @@ umount /mnt
 mount -o subvol=@,compress=zstd "${DRIVE}p2" /mnt
 mkdir -p /mnt/home
 mount -o subvol=@home,compress=zstd "${DRIVE}p2" /mnt/home
+# Mount EFI partition
+mkdir -p /mnt/boot/efi
+mount "${DRIVE}p1" /mnt/boot/efi
 # Copy XBPS keys
 mkdir -p /mnt/var/db/xbps/keys
 cp /var/db/xbps/keys/* /mnt/var/db/xbps/keys/
@@ -40,20 +40,12 @@ XBPS_ARCH="$ARCH" xbps-install -S -r /mnt -R "$REPO" base-system
 # Generate fstab
 xgenfstab -U /mnt > /mnt/etc/fstab
 # Chroot into the new system
-xchroot /mnt /bin/bash
-# Install packages
-xbps-install -S \
-    grub-x86_64-efi \
-    NetworkManager \
-    dbus
+xchroot /mnt /bin/sh <<EOF
+# Install grub
+xbps-install -S grub-x86_64-efi
 # Configure system
 echo "$HOSTNAME" > /etc/hostname
 echo "KEYMAP=us" > /etc/rc.conf
-# Wifi services
-ln -s /etc/sv/dbus /var/service/
-ln -s /etc/sv/NetworkManager /var/service/
-rm -f /var/service/dhcpcd
-rm -f /var/service/wpa_supplicant
 # Disable root login
 passwd -l root
 # Make user
@@ -63,5 +55,7 @@ passwd "$USERNAME"
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id="VOID"
 # Final
 xbps-reconfigure -fa
+exit
+EOF
 umount -R /mnt
 echo "Done!"
